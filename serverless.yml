@@ -1,0 +1,110 @@
+
+service: notes
+# app and org for use with dashboard.serverless.com
+#app: your-app-name
+#org: your-org-name
+
+# You can pin your service to only deploy with a specific Serverless version
+# Check out our docs for more details
+frameworkVersion: '3'
+
+provider:
+  name: aws
+  runtime: nodejs14.x
+  stage: dev
+  region: us-east-1
+  lambdaHashingVersion: 20201221
+
+
+functions:
+  authorizer:
+    handler: authorizer.handler
+    environment:
+      COGNITO_USERPOOL_ID: !Ref cognitoUserPool
+      COGNITO_WEB_CLIENT_ID: !Ref cognitoUserPoolClient
+
+  createNote:
+    handler: handler.createNote
+    environment:
+      NOTES_TABLE_NAME: !Ref notesTable
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - dynamodb:PutItem
+        Resource: !GetAtt notesTable.Arn
+    events:
+      - http:
+          method: post
+          path: notes
+          authorizer: authorizer
+
+  updateNote:
+    handler: handler.updateNote
+    environment:
+      NOTES_TABLE_NAME: !Ref notesTable
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - dynamodb:UpdateItem
+        Resource: !GetAtt notesTable.Arn
+    events:
+      - http:
+          method: put
+          path: notes/{id}
+          authorizer: authorizer
+
+  deleteNote:
+    handler: handler.deleteNote
+    environment:
+      NOTES_TABLE_NAME: !Ref notesTable
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - dynamodb:DeleteItem
+        Resource: !GetAtt notesTable.Arn
+    events:
+      - http:
+          method: delete
+          path: notes/{id}
+          authorizer: authorizer
+
+  getAllNotes:
+    handler: handler.getAllNotes
+    environment:
+      NOTES_TABLE_NAME: !Ref notesTable
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - dynamodb:Scan
+        Resource: !GetAtt notesTable.Arn
+    events:
+      - http:
+          method: get
+          path: notes
+          authorizer:
+            name: userpool_authorizer
+            type: COGNITO_USER_POOLS
+            arn: !GetAtt cognitoUserPool.Arn
+
+  getNote:
+    handler: handler.getNote
+    environment:
+      NOTES_TABLE_NAME: !Ref notesTable
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - dynamodb:Query
+        Resource: !GetAtt notesTable.Arn
+    events:
+      - http:
+          method: get
+          path: notes/{id}
+          authorizer: authorizer
+
+plugins:
+  - serverless-iam-roles-per-function
+  
+# you can add CloudFormation resource templates here
+resources:
+  Resources:
+    ${file(resources.yml)}

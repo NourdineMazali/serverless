@@ -1,0 +1,40 @@
+notesTable:
+  Type: AWS::DynamoDB::Table
+  Properties:
+    TableName: notesTable
+    AttributeDefinitions:
+      - AttributeName: noteId
+        AttributeType: S
+    KeySchema:
+      - AttributeName: noteId
+        KeyType: HASH
+    BillingMode: PAY_PER_REQUEST
+  
+cognitoUserPool:
+  Type: AWS::Cognito::UserPool
+  Properties:
+    UserPoolName: NotesUP
+
+cognitoUserPoolClient:
+  Type: AWS::Cognito::UserPoolClient
+  Properties:
+    UserPoolId: !Ref cognitoUserPool
+    ClientName: web
+    AllowedOAuthFlowsUserPoolClient: true
+    SupportedIdentityProviders:
+      - COGNITO
+    AllowedOAuthScopes:
+      - phone
+      - email
+      - profile
+      - openid
+    AllowedOAuthFlows:
+      - implicit
+    CallbackURLs:
+      - https://localhost:3000
+
+cognitoUserPoolDomain:
+  Type: AWS::Cognito::UserPoolDomain
+  Properties:
+    UserPoolId: !Ref cognitoUserPool
+    Domain: notes-learn
