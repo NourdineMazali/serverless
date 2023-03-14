@@ -26,11 +26,15 @@ functions:
     handler: handler.createNote
     environment:
       NOTES_TABLE_NAME: !Ref notesTable
+      EventBusName: !Ref EventBus
     iamRoleStatements:
       - Effect: Allow
         Action:
           - dynamodb:PutItem
         Resource: !GetAtt notesTable.Arn
+      - Effect: Allow
+        Action: events:PutEvents
+        Resource: !GetAtt EventBus.Arn
     events:
       - http:
           method: post
@@ -99,6 +103,15 @@ functions:
           method: get
           path: notes/{id}
           authorizer: authorizer
+    
+  processEventsLambda:
+    handler: handler.processEvent
+    events:
+      - sqs: 
+          arn: !GetAtt TargetSQS.Arn
+          batchSize: 10
+          functionResponseType: "ReportBatchItemFailures"
+    
 
 plugins:
   - serverless-iam-roles-per-function
@@ -107,3 +120,6 @@ plugins:
 resources:
   Resources:
     ${file(resources.yml)}
+  Outputs:
+      EventBusName:
+        Value: !Ref EventBus

@@ -38,3 +38,50 @@ cognitoUserPoolDomain:
   Properties:
     UserPoolId: !Ref cognitoUserPool
     Domain: notes-learn
+
+
+# EVENT BRIDGE 
+EventBus:
+  Type: AWS::Events::EventBus
+  Properties: 
+    Name: QR_EVENT_BUS
+
+TargetSQS:
+  Type: AWS::SQS::Queue
+  Properties:
+    QueueName: QR_MESSAGE_QUEUE
+    RedrivePolicy:
+      deadLetterTargetArn: !GetAtt TargetDLQ.Arn
+      maxReceiveCount: 1
+
+TargetDLQ:
+  Type: AWS::SQS::Queue
+  Properties:
+    QueueName: QR_MESSAGE_DLQ
+
+TargetSQSRule:
+  Type: AWS::Events::Rule
+  Properties:
+    EventBusName: !GetAtt EventBus.Arn
+    EventPattern:
+      source:
+        - "notes-app"
+      detail-type: 
+        - "note-created"
+    Targets:
+      - Arn: !GetAtt TargetSQS.Arn
+        Id: qr-event-bus-target-sqs-${sls:stage}
+
+TargetSQSPolicy:
+  Type: AWS::SQS::QueuePolicy
+  Properties:
+    Queues:
+      - !Ref TargetSQS
+    PolicyDocument:
+      Statement:
+        - Effect: "Allow"
+          Action:
+            - "SQS:SendMessage"
+          Resource: !GetAtt TargetSQS.Arn
+          Principal: 
+            Service: events.amazonaws.com
